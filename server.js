@@ -4,10 +4,11 @@ import { Server } from "socket.io";
 import mongoose from "mongoose";
 import cors from "cors";
 
+// --- Setup ---
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "https://chase-the-chaser1.netlify.app" } // ← richtige Netlify-Domain
+  cors: { origin: "*" } // für Test; später auf deine Frontend-Domain anpassen
 });
 
 app.use(cors());
@@ -28,7 +29,7 @@ const teamSchema = new mongoose.Schema({
 
 const Team = mongoose.model("Team", teamSchema);
 
-// --- Routes ---
+// --- Team registrieren ---
 app.post("/register-team", async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: "Teamname fehlt" });
@@ -40,6 +41,7 @@ app.post("/register-team", async (req, res) => {
       coins: 0,
       powerups: { skipLocation: 0 }
     });
+
     io.emit("updateTeams", await Team.find());
     res.status(201).json({ message: "Team erfolgreich registriert", team: newTeam });
   } catch (err) {
@@ -47,7 +49,7 @@ app.post("/register-team", async (req, res) => {
   }
 });
 
-// --- Socket.io ---
+// --- Socket.io für Standort & Live-Tracking ---
 io.on("connection", (socket) => {
   console.log("Neuer Client verbunden:", socket.id);
 
@@ -62,12 +64,18 @@ io.on("connection", (socket) => {
   });
 });
 
-// --- Standort alle 5 Minuten senden ---
+// --- Standort alle 5 Minuten senden + Timestamp ---
+let nextUpdate = Date.now() + 5 * 60 * 1000;
+
 setInterval(async () => {
   const teams = await Team.find();
   io.emit("updateTeams", teams);
+  io.emit("nextUpdate", nextUpdate);
+
+  nextUpdate = Date.now() + 5 * 60 * 1000;
   console.log("Standorte gesendet:", teams.length, "Teams");
 }, 5 * 60 * 1000);
 
+// --- Server starten ---
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log("Server läuft auf Port", PORT));
