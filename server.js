@@ -32,16 +32,18 @@ const Team = mongoose.model("Team", teamSchema);
 // --- Timer für Standortaktualisierung ---
 let nextUpdate = Date.now() + 5 * 60 * 1000;
 
-setInterval(async () => {
+const sendLocations = async () => {
   const teams = await Team.find();
   io.emit("updateTeams", teams);
 
-  // nächsten Timestamp berechnen
   nextUpdate = Date.now() + 5 * 60 * 1000;
   io.emit("nextUpdate", nextUpdate);
 
   console.log("Standorte gesendet:", teams.length, "Teams");
-}, 5 * 60 * 1000);
+};
+
+// Start Intervall
+setInterval(sendLocations, 5 * 60 * 1000);
 
 // --- Routes ---
 // Team registrieren
@@ -67,7 +69,10 @@ app.post("/register-team", async (req, res) => {
 io.on("connection", (socket) => {
   console.log("Neuer Client verbunden:", socket.id);
 
-  // direkt den aktuellen Timestamp senden
+  // sofort aktuelle Teams senden
+  Team.find().then((teams) => socket.emit("updateTeams", teams));
+
+  // sofort aktuellen Timestamp senden
   socket.emit("nextUpdate", nextUpdate);
 
   socket.on("joinRoom", (teamId) => {
@@ -76,7 +81,8 @@ io.on("connection", (socket) => {
 
   socket.on("updateLocation", async ({ teamId, location }) => {
     await Team.findByIdAndUpdate(teamId, { location });
-    io.emit("updateTeams", await Team.find());
+    const teams = await Team.find();
+    io.emit("updateTeams", teams);
   });
 });
 
