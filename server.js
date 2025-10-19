@@ -36,6 +36,19 @@ rewardCoins: Number
 });
 const Challenge = mongoose.model('Challenge', challengeSchema);
 
+app.post("/register-team", async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: "Teamname fehlt" });
+
+  try {
+    const newTeam = await Team.create({ name, location: { lat: 0, lng: 0 }, coins: 0 });
+    res.status(201).json(newTeam);
+    io.emit("updateTeams", await Team.find());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/teams', async (req, res) => {
 const team = new Team(req.body);
 await team.save();
