@@ -97,6 +97,16 @@ const teams = await Team.find();
 socket.emit('locationUpdate', teams);
 }, 300000);
 
+setInterval(async () => {
+  try {
+    const teams = await Team.find();
+    io.emit("updateTeams", teams);
+    console.log("Standorte gesendet:", teams.length, "Teams");
+  } catch (err) {
+    console.error("Fehler beim Senden der Standorte:", err);
+  }
+}, 5 * 60 * 1000); // 5 Minuten
+
 setInterval(() => {
 socket.emit('timer', { nextUpdate: new Date(Date.now() + 5*60*1000) });
 }, 1000);
