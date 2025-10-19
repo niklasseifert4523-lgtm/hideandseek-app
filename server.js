@@ -8,7 +8,7 @@ import cors from "cors";
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*" } // für Test; später auf deine Frontend-Domain anpassen
+  cors: { origin: "https://dein-frontend.netlify.app" } // Frontend URL anpassen
 });
 
 app.use(cors());
@@ -29,7 +29,22 @@ const teamSchema = new mongoose.Schema({
 
 const Team = mongoose.model("Team", teamSchema);
 
-// --- Team registrieren ---
+// --- Timer für Standortaktualisierung ---
+let nextUpdate = Date.now() + 5 * 60 * 1000;
+
+setInterval(async () => {
+  const teams = await Team.find();
+  io.emit("updateTeams", teams);
+
+  // nächsten Timestamp berechnen
+  nextUpdate = Date.now() + 5 * 60 * 1000;
+  io.emit("nextUpdate", nextUpdate);
+
+  console.log("Standorte gesendet:", teams.length, "Teams");
+}, 5 * 60 * 1000);
+
+// --- Routes ---
+// Team registrieren
 app.post("/register-team", async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: "Teamname fehlt" });
@@ -41,7 +56,6 @@ app.post("/register-team", async (req, res) => {
       coins: 0,
       powerups: { skipLocation: 0 }
     });
-
     io.emit("updateTeams", await Team.find());
     res.status(201).json({ message: "Team erfolgreich registriert", team: newTeam });
   } catch (err) {
@@ -49,13 +63,15 @@ app.post("/register-team", async (req, res) => {
   }
 });
 
-// --- Socket.io für Standort & Live-Tracking ---
+// --- Socket.io ---
 io.on("connection", (socket) => {
   console.log("Neuer Client verbunden:", socket.id);
 
+  // direkt den aktuellen Timestamp senden
+  socket.emit("nextUpdate", nextUpdate);
+
   socket.on("joinRoom", (teamId) => {
     socket.join(teamId);
-    console.log(`Team ${teamId} joined`);
   });
 
   socket.on("updateLocation", async ({ teamId, location }) => {
@@ -63,18 +79,6 @@ io.on("connection", (socket) => {
     io.emit("updateTeams", await Team.find());
   });
 });
-
-// --- Standort alle 5 Minuten senden + Timestamp ---
-let nextUpdate = Date.now() + 5 * 60 * 1000;
-
-setInterval(async () => {
-  const teams = await Team.find();
-  io.emit("updateTeams", teams);
-  io.emit("nextUpdate", nextUpdate);
-
-  nextUpdate = Date.now() + 5 * 60 * 1000;
-  console.log("Standorte gesendet:", teams.length, "Teams");
-}, 5 * 60 * 1000);
 
 // --- Server starten ---
 const PORT = process.env.PORT || 5000;
