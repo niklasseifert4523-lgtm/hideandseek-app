@@ -15,7 +15,7 @@ server.listen(PORT, () => console.log(`Backend läuft auf Port ${PORT}`));
 
 
 app.use(express.json());
-app.use(cors({ origin: 'https://chase-the-chaser.netlify.app', credentials: true }));
+app.use(cors({ origin: 'https://chase-the-chaser1.netlify.app', credentials: true }));
 
 
 mongoose.connect('mongodb+srv://CTC:1234@ctc.6sdysob.mongodb.net/?retryWrites=true&w=majority&appName=CTC');
