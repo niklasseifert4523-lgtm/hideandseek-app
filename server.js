@@ -15,7 +15,10 @@ server.listen(PORT, () => console.log(`Backend läuft auf Port ${PORT}`));
 
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: "https://hideandseek-frontend.onrender.com",
+  methods: ["GET", "POST"],
+}));
 
 mongoose.connect('mongodb+srv://CTC:1234@ctc.6sdysob.mongodb.net/?retryWrites=true&w=majority&appName=CTC');
 
